@@ -1,0 +1,32 @@
+# configs/qlearning_v2.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Experiment: exp-energy-2
+# Config for Q-Learning run on Smart Energy Management environment.
+# Tuned version: more episodes, slower decay, higher gamma for better policy.
+# Pass this file to train.py via: python train.py --config configs/qlearning_v2.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+experiment:
+  name: "exp-energy-2"
+  description: "Tuned Q-learning run — more exploration, longer training, higher gamma"
+  version: "v2"
+
+training:
+  episodes: 1000
+  log_interval: 100          # print summary every N episodes
+  seed: 42
+
+hyperparameters:
+  learning_rate: 0.15        # alpha  — slightly higher for faster value propagation
+  gamma: 0.99                # discount factor — more weight on long-term reward
+  epsilon: 1.0               # initial exploration rate (fully random at start)
+  epsilon_min: 0.01          # floor for epsilon
+  epsilon_decay: 0.998       # slower decay — more exploration before exploitation
+
+environment:
+  max_battery: 100           # full charge value
+
+output:
+  policy_path: "policy_v2.pkl"
+  results_csv: "results.csv"
+  logs_dir: "logs"
