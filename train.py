@@ -1,15 +1,15 @@
 """
-train.py — MLOps-enhanced training script (Part 2)
+train.py — MLOps-enhanced training script
 
-Extends Part 1 with:
+Extends the core agent with:
   - YAML config loading via --config argument
   - Experiment tracking: results appended to results.csv
-  - Per-episode reward logging: logs/run_<id>.json
-  - Versioned run IDs  (experiment tags: exp-energy-1, exp-energy-2)
+  - Per-episode reward/drain/task-score logging: logs/run_<id>.json
+  - Versioned run IDs  (experiment tags: exp-qlearning-1, exp-qlearning-2)
 
 Usage:
     python train.py --config configs/qlearning_v1.yaml
-    python train.py --config configs/qlearning_v1.yaml --run_id run_2
+    python train.py --config configs/qlearning_v2.yaml --run_id run_2
 """
 
 import argparse
@@ -121,11 +121,12 @@ def append_results_csv(filepath, row: dict):
     Append one result row to results.csv (create with header if missing).
 
     Columns: run_id, episodes, avg_reward, avg_battery_remaining,
-             epsilon, learning_rate
+             avg_drain_per_step, avg_task_score, epsilon, learning_rate
     """
     fieldnames = [
         "run_id", "episodes", "avg_reward",
-        "avg_battery_remaining", "epsilon", "learning_rate",
+        "avg_battery_remaining", "avg_drain_per_step",
+        "avg_task_score", "epsilon", "learning_rate",
     ]
     file_exists = os.path.isfile(filepath)
     with open(filepath, "a", newline="") as fh:
@@ -137,21 +138,28 @@ def append_results_csv(filepath, row: dict):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-def save_episode_log(logs_dir, run_id, episode_rewards, episode_battery):
+def save_episode_log(logs_dir, run_id, episode_rewards, episode_battery,
+                     episode_drains, episode_task_scores):
     """
-    Save per-episode rewards and battery levels to logs/<run_id>.json.
+    Save per-episode metrics to logs/<run_id>.json.
 
-    Experiment tags: exp-energy-1  exp-energy-2
+    Experiment tags: exp-qlearning-1  exp-qlearning-2
+    Metrics logged per episode:
+      - rewards          : total reward
+      - battery_remaining: % battery left at episode end
+      - drain_per_step   : avg battery % drained per timestep (energy efficiency)
+      - task_score       : avg task completion score per timestep
     """
     safe_mkdir(logs_dir)
     log_path = os.path.join(logs_dir, f"{run_id}.json")
     payload = {
-        "run_id"          : run_id,
-        # Experiment tags: exp-energy-1, exp-energy-2
-        "experiment_tags" : ["exp-energy-1", "exp-energy-2"],
-        "n_episodes"      : len(episode_rewards),
-        "episode_rewards" : [round(r, 4) for r in episode_rewards],
-        "episode_battery" : [round(b, 2)  for b in episode_battery],
+        "run_id"             : run_id,
+        "experiment_tags"    : ["exp-qlearning-1", "exp-qlearning-2"],
+        "n_episodes"         : len(episode_rewards),
+        "episode_rewards"    : [round(r, 4) for r in episode_rewards],
+        "episode_battery"    : [round(b, 2) for b in episode_battery],
+        "episode_drain_per_step"  : [round(d, 4) for d in episode_drains],
+        "episode_task_scores"     : [round(s, 4) for s in episode_task_scores],
     }
     with open(log_path, "w") as fh:
         json.dump(payload, fh, indent=2)
@@ -166,8 +174,8 @@ def train(cfg: dict, run_id: str):
     """
     np.random.seed(cfg["seed"])
 
-    # ── Experiment: exp-energy-1 (standard run) ───────────────────────────────
-    # ── Experiment: exp-energy-2 (extended exploration run) ──────────────────
+    # ── Experiment: exp-qlearning-1 (standard run) ────────────────────────────
+    # ── Experiment: exp-qlearning-2 (tuned exploration run) ──────────────────
     print(f"\n{'═'*55}")
     print(f"  Experiment : {cfg['exp_name']}  ({cfg['exp_version']})")
     print(f"  Run ID     : {run_id}")
@@ -184,23 +192,32 @@ def train(cfg: dict, run_id: str):
         epsilon_decay=cfg["epsilon_decay"],
     )
 
-    episode_rewards = []
-    episode_battery = []
+    episode_rewards     = []
+    episode_battery     = []
+    episode_drains      = []   # avg battery % drained per step (energy efficiency)
+    episode_task_scores = []   # avg task completion score per step
 
     for ep in range(1, cfg["episodes"] + 1):
         state        = env.reset()
         total_reward = 0.0
+        step_drains  = []
+        step_scores  = []
 
         while not env.done:
-            action                      = agent.choose_action(state)
-            next_state, reward, done, _ = env.step(action)
+            action                         = agent.choose_action(state)
+            next_state, reward, done, info = env.step(action)
             agent.update(state, action, reward, next_state, done)
             state        = next_state
             total_reward += reward
+            # battery_penalty = drain * 0.5  →  drain = battery_penalty * 2
+            step_drains.append(info["battery_penalty"] * 2)
+            step_scores.append(info["task_score"])
 
         agent.decay_epsilon()
         episode_rewards.append(total_reward)
         episode_battery.append(env.get_battery_percentage())
+        episode_drains.append(float(np.mean(step_drains)) if step_drains else 0.0)
+        episode_task_scores.append(float(np.mean(step_scores)) if step_scores else 0.0)
 
         if ep % cfg["log_interval"] == 0:
             avg_r = float(np.mean(episode_rewards[-cfg["log_interval"]:]))
@@ -210,12 +227,16 @@ def train(cfg: dict, run_id: str):
     agent.save(cfg["policy_path"])
 
     # ── Compute summary metrics ───────────────────────────────────────────────
-    window       = min(100, cfg["episodes"])
-    avg_reward   = float(np.mean(episode_rewards[-window:]))
-    avg_battery  = float(np.mean(episode_battery[-window:]))
+    window          = min(100, cfg["episodes"])
+    avg_reward      = float(np.mean(episode_rewards[-window:]))
+    avg_battery     = float(np.mean(episode_battery[-window:]))
+    avg_drain       = float(np.mean(episode_drains[-window:]))
+    avg_task_score  = float(np.mean(episode_task_scores[-window:]))
 
-    print(f"\n  Final {window}-ep avg reward  : {avg_reward:.2f}")
-    print(f"  Final {window}-ep avg battery : {avg_battery:.2f}%")
+    print(f"\n  Final {window}-ep avg reward       : {avg_reward:.2f}")
+    print(f"  Final {window}-ep avg battery      : {avg_battery:.2f}%")
+    print(f"  Final {window}-ep avg drain/step   : {avg_drain:.2f}%")
+    print(f"  Final {window}-ep avg task score   : {avg_task_score:.2f}")
 
     # ── MLOps: append to results.csv ──────────────────────────────────────────
     result_row = {
@@ -223,13 +244,19 @@ def train(cfg: dict, run_id: str):
         "episodes"             : cfg["episodes"],
         "avg_reward"           : round(avg_reward, 4),
         "avg_battery_remaining": round(avg_battery, 4),
+        "avg_drain_per_step"   : round(avg_drain, 4),
+        "avg_task_score"       : round(avg_task_score, 4),
         "epsilon"              : round(cfg["epsilon"], 4),
         "learning_rate"        : cfg["lr"],
     }
     append_results_csv(cfg["results_csv"], result_row)
 
     # ── MLOps: save per-episode log ───────────────────────────────────────────
-    save_episode_log(cfg["logs_dir"], run_id, episode_rewards, episode_battery)
+    save_episode_log(
+        cfg["logs_dir"], run_id,
+        episode_rewards, episode_battery,
+        episode_drains, episode_task_scores,
+    )
 
     return agent, episode_rewards, episode_battery
 
