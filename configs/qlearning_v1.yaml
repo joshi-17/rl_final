@@ -1,0 +1,31 @@
+# configs/qlearning_v1.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Experiment: exp-energy-1
+# Config for Q-Learning run on Smart Energy Management environment.
+# Pass this file to train.py via: python train.py --config configs/qlearning_v1.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+experiment:
+  name: "exp-energy-1"
+  description: "Baseline Q-learning run with standard hyper-parameters"
+  version: "v1"
+
+training:
+  episodes: 500
+  log_interval: 100          # print summary every N episodes
+  seed: 42
+
+hyperparameters:
+  learning_rate: 0.1         # alpha  — step size for Q-table updates
+  gamma: 0.95                # discount factor — how much future reward matters
+  epsilon: 1.0               # initial exploration rate (fully random at start)
+  epsilon_min: 0.01          # floor for epsilon
+  epsilon_decay: 0.995       # multiplicative decay applied each episode
+
+environment:
+  max_battery: 100           # full charge value
+
+output:
+  policy_path: "policy_v1.pkl"
+  results_csv: "results.csv"
+  logs_dir: "logs"
