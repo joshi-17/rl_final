@@ -4,10 +4,10 @@ utils.py — Shared helper functions for the Smart Energy RL project.
 Provides:
   - moving_average          : smooth noisy reward curves
   - print_training_summary  : compare two policy runs
-  - discretise_battery      : continuous % → 0/1/2
-  - action_to_name          : int → readable string
-  - battery_level_to_name   : int → readable string
-  - task_demand_to_name     : int → readable string
+  - discretise_battery      : continuous % -> 0/1/2
+  - action_to_name          : int -> readable string
+  - battery_level_to_name   : int -> readable string
+  - task_demand_to_name     : int -> readable string
   - safe_mkdir              : create a directory if it does not exist
 """
 
@@ -15,7 +15,7 @@ import os
 import numpy as np
 
 
-# ── Label helpers ──────────────────────────────────────────────────────────────
+# -- Label helpers --------------------------------------------------------------
 
 def action_to_name(action):
     """Convert action index to a human-readable power-level name."""
@@ -35,7 +35,7 @@ def task_demand_to_name(demand):
     return names.get(demand, "unknown")
 
 
-# ── Numerical helpers ─────────────────────────────────────────────────────────
+# -- Numerical helpers ---------------------------------------------------------
 
 def moving_average(data, window=50):
     """
@@ -77,7 +77,7 @@ def discretise_battery(battery_pct):
         return 0
 
 
-# ── Reporting helpers ─────────────────────────────────────────────────────────
+# -- Reporting helpers ---------------------------------------------------------
 
 def print_training_summary(rewards_v1, rewards_v2, window=100):
     """
@@ -103,7 +103,7 @@ def print_training_summary(rewards_v1, rewards_v2, window=100):
     print(f"  Policy V2 — episodes: {len(rewards_v2):>5}  "
           f"final {w2}-ep avg reward: {avg2:>8.2f}")
     winner = "V2" if avg2 > avg1 else "V1"
-    print(f"\n  ► Best policy: {winner}")
+    print(f"\n  > Best policy: {winner}")
     print("=" * 50 + "\n")
 
 
@@ -117,7 +117,7 @@ def print_episode_log(episode, total_episodes, avg_reward, epsilon, extra=""):
           f"avg_r={avg_reward:>8.2f}  ε={epsilon:.4f}  {extra}")
 
 
-# ── File system helpers ───────────────────────────────────────────────────────
+# -- File system helpers -------------------------------------------------------
 
 def safe_mkdir(path):
     """Create directory (and parents) if it does not already exist."""

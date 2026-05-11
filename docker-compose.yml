@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  rl-energy:
+    build: .
+    volumes:
+      - ./outputs:/app/outputs
+    environment:
+      - TRAIN_EPISODES=500
+      - EVAL_EPISODES=200

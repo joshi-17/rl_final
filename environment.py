@@ -14,7 +14,7 @@ Action : power level    0=low  1=medium  2=high
 import random
 
 
-# ── Human-readable label maps ─────────────────────────────────────────────────
+# -- Human-readable label maps -------------------------------------------------
 BATTERY_LABELS = {0: "low", 1: "medium", 2: "high"}
 TASK_LABELS    = {0: "low", 1: "medium", 2: "high"}
 ACTION_LABELS  = {0: "low_power", 1: "medium_power", 2: "high_power"}
@@ -39,9 +39,9 @@ class EnergyEnvironment:
     # Default battery drain per step (percentage points) for each action
     # ------------------------------------------------------------------
     DEFAULT_DRAIN = {
-        0: 2,   # low power   → small drain
-        1: 5,   # medium power → moderate drain
-        2: 10,  # high power  → heavy drain
+        0: 2,   # low power   -> small drain
+        1: 5,   # medium power -> moderate drain
+        2: 10,  # high power  -> heavy drain
     }
 
     # ------------------------------------------------------------------
@@ -75,7 +75,7 @@ class EnergyEnvironment:
         self.current_task = 0
         self.done         = False
 
-    # ── Public API ─────────────────────────────────────────────────────────────
+    # -- Public API -------------------------------------------------------------
 
     def reset(self):
         """Reset environment to a fully-charged state. Returns initial state."""
@@ -102,24 +102,24 @@ class EnergyEnvironment:
         if self.done:
             raise RuntimeError("Episode finished. Call reset() before stepping.")
 
-        # ── 1. Task completion score ──────────────────────────────────────────
+        # -- 1. Task completion score ------------------------------------------
         task_score = self.completion_scores.get((action, self.current_task), 0)
 
-        # ── 2. Drain the battery ──────────────────────────────────────────────
+        # -- 2. Drain the battery ----------------------------------------------
         drain          = self.drain_rates[action]
         self.battery   = max(0.0, self.battery - drain)
 
-        # ── 3. Battery-usage penalty (proportional to drain) ─────────────────
+        # -- 3. Battery-usage penalty (proportional to drain) -----------------
         battery_penalty = drain * 0.5
 
-        # ── 4. Reward ─────────────────────────────────────────────────────────
+        # -- 4. Reward ---------------------------------------------------------
         reward = task_score - battery_penalty
 
-        # ── 5. Terminal condition ─────────────────────────────────────────────
+        # -- 5. Terminal condition ---------------------------------------------
         if self.battery <= 0:
             self.done = True
 
-        # ── 6. Next task (state transition) ──────────────────────────────────
+        # -- 6. Next task (state transition) ----------------------------------
         self.current_task = self._generate_task()
         next_state = self._get_state()
 
@@ -132,7 +132,7 @@ class EnergyEnvironment:
         }
         return next_state, reward, self.done, info
 
-    # ── Utility helpers ────────────────────────────────────────────────────────
+    # -- Utility helpers --------------------------------------------------------
 
     def get_battery_percentage(self):
         """Return battery as a 0-100 percentage."""

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+*.pkl
+logs/
+outputs/
+plots/
+results.csv
+*.md

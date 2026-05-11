@@ -19,7 +19,7 @@ import os
 import time
 import numpy as np
 
-# ── Try to import yaml; fall back to a minimal parser if unavailable ──────────
+# -- Try to import yaml; fall back to a minimal parser if unavailable ----------
 try:
     import yaml
     def load_yaml(path):
@@ -63,13 +63,13 @@ except ImportError:
                     stack.append((indent + 1, parent[key]))
         return result
 
-# ── Import core modules (reused from Part 1) ──────────────────────────────────
+# -- Import core modules (reused from Part 1) ----------------------------------
 from environment import EnergyEnvironment
 from agent import QLearningAgent
 from utils import moving_average, print_episode_log, safe_mkdir
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Train Q-learning agent for Smart Energy Management"
@@ -85,7 +85,7 @@ def parse_args():
     return parser.parse_args()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def load_config(config_path):
     """Load YAML config and return a flat settings dict."""
     raw = load_yaml(config_path)
@@ -115,7 +115,7 @@ def load_config(config_path):
     return cfg
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def append_results_csv(filepath, row: dict):
     """
     Append one result row to results.csv (create with header if missing).
@@ -137,7 +137,7 @@ def append_results_csv(filepath, row: dict):
     print(f"  [mlops] Results appended to {filepath}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def save_episode_log(logs_dir, run_id, episode_rewards, episode_battery,
                      episode_drains, episode_task_scores):
     """
@@ -166,7 +166,7 @@ def save_episode_log(logs_dir, run_id, episode_rewards, episode_battery,
     print(f"  [mlops] Episode log saved to {log_path}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def train(cfg: dict, run_id: str):
     """
     Main training loop — reads all settings from cfg dict.
@@ -174,14 +174,14 @@ def train(cfg: dict, run_id: str):
     """
     np.random.seed(cfg["seed"])
 
-    # ── Experiment: exp-qlearning-1 (standard run) ────────────────────────────
-    # ── Experiment: exp-qlearning-2 (tuned exploration run) ──────────────────
-    print(f"\n{'═'*55}")
+    # -- Experiment: exp-qlearning-1 (standard run) ----------------------------
+    # -- Experiment: exp-qlearning-2 (tuned exploration run) ------------------
+    print(f"\n{'='*55}")
     print(f"  Experiment : {cfg['exp_name']}  ({cfg['exp_version']})")
     print(f"  Run ID     : {run_id}")
     print(f"  Config     : episodes={cfg['episodes']}  lr={cfg['lr']}  "
           f"γ={cfg['gamma']}  ε={cfg['epsilon']}")
-    print(f"{'═'*55}")
+    print(f"{'='*55}")
 
     env = EnergyEnvironment(max_battery=cfg["max_battery"], seed=cfg["seed"])
     agent = QLearningAgent(
@@ -209,7 +209,7 @@ def train(cfg: dict, run_id: str):
             agent.update(state, action, reward, next_state, done)
             state        = next_state
             total_reward += reward
-            # battery_penalty = drain * 0.5  →  drain = battery_penalty * 2
+            # battery_penalty = drain * 0.5  ->  drain = battery_penalty * 2
             step_drains.append(info["battery_penalty"] * 2)
             step_scores.append(info["task_score"])
 
@@ -223,10 +223,10 @@ def train(cfg: dict, run_id: str):
             avg_r = float(np.mean(episode_rewards[-cfg["log_interval"]:]))
             print_episode_log(ep, cfg["episodes"], avg_r, agent.epsilon)
 
-    # ── Save trained policy ───────────────────────────────────────────────────
+    # -- Save trained policy ---------------------------------------------------
     agent.save(cfg["policy_path"])
 
-    # ── Compute summary metrics ───────────────────────────────────────────────
+    # -- Compute summary metrics -----------------------------------------------
     window          = min(100, cfg["episodes"])
     avg_reward      = float(np.mean(episode_rewards[-window:]))
     avg_battery     = float(np.mean(episode_battery[-window:]))
@@ -238,7 +238,7 @@ def train(cfg: dict, run_id: str):
     print(f"  Final {window}-ep avg drain/step   : {avg_drain:.2f}%")
     print(f"  Final {window}-ep avg task score   : {avg_task_score:.2f}")
 
-    # ── MLOps: append to results.csv ──────────────────────────────────────────
+    # -- MLOps: append to results.csv ------------------------------------------
     result_row = {
         "run_id"               : run_id,
         "episodes"             : cfg["episodes"],
@@ -251,7 +251,7 @@ def train(cfg: dict, run_id: str):
     }
     append_results_csv(cfg["results_csv"], result_row)
 
-    # ── MLOps: save per-episode log ───────────────────────────────────────────
+    # -- MLOps: save per-episode log -------------------------------------------
     save_episode_log(
         cfg["logs_dir"], run_id,
         episode_rewards, episode_battery,
@@ -261,7 +261,7 @@ def train(cfg: dict, run_id: str):
     return agent, episode_rewards, episode_battery
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 if __name__ == "__main__":
     args = parse_args()
 

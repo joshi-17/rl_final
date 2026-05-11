@@ -31,12 +31,12 @@ from baseline import BaselineAgent, run_baseline
 from utils import moving_average, safe_mkdir
 
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# -- Paths ---------------------------------------------------------------------
 PLOTS_DIR   = "plots"
 POLICY_PATH = "policy_v1.pkl"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def train_rl_agent(episodes=500, seed=42):
     """Train a Q-learning agent from scratch and return it."""
     import random
@@ -73,7 +73,7 @@ def load_rl_agent(policy_path):
     return agent
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def run_rl_eval(agent, episodes=200, seed=99):
     """
     Evaluate a trained RL agent (epsilon=0, greedy) over multiple episodes.
@@ -110,7 +110,7 @@ def run_rl_eval(agent, episodes=200, seed=99):
     return episode_rewards, episode_battery
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def record_episode_trace(agent_or_baseline, seed=123):
     """
     Run ONE episode and record battery % at every step.
@@ -130,9 +130,9 @@ def record_episode_trace(agent_or_baseline, seed=123):
     return battery_trace
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Plotting helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def plot_reward_vs_episodes(rl_rewards, bl_rewards, output_path, window=30):
     """
@@ -164,7 +164,7 @@ def plot_reward_vs_episodes(rl_rewards, bl_rewards, output_path, window=30):
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
     plt.close(fig)
-    print(f"  [plot] Saved → {output_path}")
+    print(f"  [plot] Saved -> {output_path}")
 
 
 def plot_battery_vs_time(rl_trace, bl_trace, output_path):
@@ -197,10 +197,10 @@ def plot_battery_vs_time(rl_trace, bl_trace, output_path):
     plt.tight_layout()
     plt.savefig(output_path, dpi=150)
     plt.close(fig)
-    print(f"  [plot] Saved → {output_path}")
+    print(f"  [plot] Saved -> {output_path}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def print_comparison_table(rl_rewards, bl_rewards, rl_battery, bl_battery):
     """Print a formatted comparison table to the console."""
     rl_avg_r = np.mean(rl_rewards)
@@ -211,26 +211,26 @@ def print_comparison_table(rl_rewards, bl_rewards, rl_battery, bl_battery):
     reward_diff = rl_avg_r - bl_avg_r
     battery_diff = rl_avg_b - bl_avg_b
 
-    print("\n" + "═" * 62)
+    print("\n" + "=" * 62)
     print("  COMPARISON TABLE: Baseline vs RL Policy")
-    print("═" * 62)
-    print(f"  {'Metric':<28} {'Baseline':>10}  {'RL Policy':>10}  {'Δ (RL−Base)':>11}")
-    print("─" * 62)
+    print("=" * 62)
+    print(f"  {'Metric':<28} {'Baseline':>10}  {'RL Policy':>10}  {'Delta (RL-Base)':>11}")
+    print("-" * 62)
     print(f"  {'Avg reward':<28} {bl_avg_r:>10.2f}  {rl_avg_r:>10.2f}  {reward_diff:>+11.2f}")
     print(f"  {'Std reward':<28} {np.std(bl_rewards):>10.2f}  {np.std(rl_rewards):>10.2f}  {'':>11}")
     print(f"  {'Avg battery remaining (%)':<28} {bl_avg_b:>10.2f}  {rl_avg_b:>10.2f}  {battery_diff:>+11.2f}")
     print(f"  {'Min reward':<28} {np.min(bl_rewards):>10.2f}  {np.min(rl_rewards):>10.2f}  {'':>11}")
     print(f"  {'Max reward':<28} {np.max(bl_rewards):>10.2f}  {np.max(rl_rewards):>10.2f}  {'':>11}")
-    print("═" * 62)
+    print("=" * 62)
     winner = "RL Policy" if rl_avg_r > bl_avg_r else "Baseline"
-    print(f"\n  ► Higher avg reward: {winner}")
+    print(f"\n  > Higher avg reward: {winner}")
     if rl_avg_r > bl_avg_r:
         pct = 100.0 * reward_diff / abs(bl_avg_r) if bl_avg_r != 0 else float("inf")
-        print(f"  ► RL improves over baseline by {pct:.1f}%")
-    print("═" * 62 + "\n")
+        print(f"  > RL improves over baseline by {pct:.1f}%")
+    print("=" * 62 + "\n")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Compare baseline vs RL agent on Smart Energy Management"
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 
     safe_mkdir(PLOTS_DIR)
 
-    # ── 1. Get RL agent ───────────────────────────────────────────────────────
+    # -- 1. Get RL agent -------------------------------------------------------
     if args.load_policy and os.path.isfile(args.load_policy):
         print(f"\n  Loading RL policy from {args.load_policy} ...")
         rl_agent = load_rl_agent(args.load_policy)
@@ -255,25 +255,25 @@ if __name__ == "__main__":
         rl_agent = train_rl_agent(episodes=args.train_ep, seed=args.seed)
         rl_agent.save(POLICY_PATH)
 
-    # ── 2. Evaluate RL agent ──────────────────────────────────────────────────
+    # -- 2. Evaluate RL agent --------------------------------------------------
     print(f"\n  Evaluating RL agent for {args.episodes} episodes...")
     rl_rewards, rl_battery = run_rl_eval(rl_agent, episodes=args.episodes, seed=99)
 
-    # ── 3. Evaluate baseline ──────────────────────────────────────────────────
+    # -- 3. Evaluate baseline --------------------------------------------------
     print(f"\n  Evaluating Baseline agent for {args.episodes} episodes...")
     bl_agent  = BaselineAgent()
     bl_rewards, bl_battery, _ = run_baseline(
         episodes=args.episodes, seed=99, verbose=True
     )
 
-    # ── 4. Comparison table ───────────────────────────────────────────────────
+    # -- 4. Comparison table ---------------------------------------------------
     print_comparison_table(rl_rewards, bl_rewards, rl_battery, bl_battery)
 
-    # ── 5. Battery episode traces (single episode) ────────────────────────────
+    # -- 5. Battery episode traces (single episode) ----------------------------
     rl_trace = record_episode_trace(rl_agent, seed=123)
     bl_trace = record_episode_trace(bl_agent,  seed=123)
 
-    # ── 6. Plots ──────────────────────────────────────────────────────────────
+    # -- 6. Plots --------------------------------------------------------------
     plot_reward_vs_episodes(
         rl_rewards, bl_rewards,
         output_path=os.path.join(PLOTS_DIR, "reward_vs_episodes.png"),

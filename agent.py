@@ -11,11 +11,11 @@ Why Q-Learning?
 Q-Table shape: [battery_levels=3, task_demands=3, actions=3]
 
 Update rule:
-  Q(s, a) ← Q(s, a) + α · [r + γ · max_a' Q(s', a') − Q(s, a)]
+  Q(s, a) <- Q(s, a) + α · [r + γ · max_a' Q(s', a') - Q(s, a)]
 
 Exploration: epsilon-greedy
-  With probability ε  → take a random action  (explore)
-  With probability 1-ε → take the greedy action (exploit)
+  With probability ε  -> take a random action  (explore)
+  With probability 1-ε -> take the greedy action (exploit)
   ε decays over time so the agent gradually shifts from exploration to exploitation.
 """
 
@@ -50,7 +50,7 @@ class QLearningAgent:
         epsilon_min=0.01,
         epsilon_decay=0.995,
     ):
-        # ── Hyper-parameters ──────────────────────────────────────────────────
+        # -- Hyper-parameters --------------------------------------------------
         self.lr            = lr
         self.gamma         = gamma
         self.epsilon       = epsilon
@@ -58,11 +58,11 @@ class QLearningAgent:
         self.epsilon_decay = epsilon_decay
         self.n_actions     = n_actions
 
-        # ── Q-table initialised to zeros ──────────────────────────────────────
+        # -- Q-table initialised to zeros --------------------------------------
         # Dimensions: [battery_level, task_demand, action]
         self.q_table = np.zeros((n_battery, n_tasks, n_actions))
 
-    # ── Core methods ───────────────────────────────────────────────────────────
+    # -- Core methods -----------------------------------------------------------
 
     def choose_action(self, state):
         """
@@ -88,7 +88,7 @@ class QLearningAgent:
         """
         Apply the Q-learning update rule for one transition.
 
-        Q(s,a) ← Q(s,a) + α · [target − Q(s,a)]
+        Q(s,a) <- Q(s,a) + α · [target - Q(s,a)]
         target  = r                          if done
                 = r + γ · max_a' Q(s', a')  otherwise
         """
@@ -111,7 +111,7 @@ class QLearningAgent:
         """Decay ε after each episode (call once per episode end)."""
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    # ── Policy extraction ─────────────────────────────────────────────────────
+    # -- Policy extraction -----------------------------------------------------
 
     def get_policy(self):
         """
@@ -132,7 +132,7 @@ class QLearningAgent:
         labels_b = ["low ", "med ", "high"]
         labels_t = ["low ", "med ", "high"]
         labels_a = ["low_pwr", "med_pwr", "hi_pwr "]
-        print("\n── Q-Table (battery × task → Q per action) ──")
+        print("\n-- Q-Table (battery × task -> Q per action) --")
         print(f"{'State':>20}  |  " + "  ".join(labels_a))
         print("-" * 60)
         for b in range(3):
@@ -142,7 +142,7 @@ class QLearningAgent:
                 print(f"  bat={labels_b[b]} task={labels_t[t]}  |  {row}")
         print()
 
-    # ── Persistence ───────────────────────────────────────────────────────────
+    # -- Persistence -----------------------------------------------------------
 
     def save(self, filepath):
         """Serialise the agent (Q-table + hyper-params) to a pickle file."""

@@ -20,7 +20,7 @@ from environment import EnergyEnvironment
 from utils import action_to_name, battery_level_to_name, task_demand_to_name
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 class BaselineAgent:
     """
     Fixed-policy agent that always selects medium power (action=1).
@@ -42,7 +42,7 @@ class BaselineAgent:
         return f"Baseline (always {action_to_name(self.FIXED_ACTION)})"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def run_baseline(episodes=200, seed=42, verbose=True):
     """
     Evaluate the baseline agent over a number of episodes.
@@ -94,7 +94,7 @@ def run_baseline(episodes=200, seed=42, verbose=True):
     return episode_rewards, episode_battery, episode_steps
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 def print_baseline_summary(episode_rewards, episode_battery, episode_steps):
     """Print a human-readable summary of the baseline evaluation."""
     print("\n" + "=" * 50)
@@ -110,7 +110,7 @@ def print_baseline_summary(episode_rewards, episode_battery, episode_steps):
     print("=" * 50 + "\n")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run baseline agent evaluation")
     parser.add_argument("--episodes", type=int, default=200,
