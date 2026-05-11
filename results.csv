@@ -1,3 +1,4 @@
 run_id,episodes,avg_reward,avg_battery_remaining,epsilon,learning_rate
 run_1,500,139.76,0.0,1.0,0.1
 run_1778480463,500,139.76,0.0,1.0,0.1
+run_1778482985,500,139.76,0.0,4.2723,7.751,1.0,0.1
