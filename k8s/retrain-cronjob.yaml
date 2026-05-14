@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rl-energy-retrain
+spec:
+  schedule: "0 2 * * 1"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: retrain
+              image: rl-energy:latest
+              imagePullPolicy: IfNotPresent
+              command: ["python", "run_all.py"]
+              envFrom:
+                - configMapRef:
+                    name: rl-energy-config

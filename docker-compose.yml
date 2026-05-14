@@ -1,10 +1,28 @@
 version: "3.9"
 
 services:
-  rl-energy:
+  pipeline:
     build: .
     volumes:
       - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./model_registry:/app/model_registry
+      - ./mlruns:/app/mlruns
     environment:
       - TRAIN_EPISODES=500
       - EVAL_EPISODES=200
+      - MLFLOW_TRACKING_URI=file:/app/mlruns
+
+  api:
+    build: .
+    command: >
+      sh -c "python train.py --config configs/qlearning_v1.yaml --run_id compose_api_boot &&
+             uvicorn api:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./model_registry:/app/model_registry
+      - ./mlruns:/app/mlruns
+    environment:
+      - MLFLOW_TRACKING_URI=file:/app/mlruns

@@ -67,6 +67,13 @@ except ImportError:
 from environment import EnergyEnvironment
 from agent import QLearningAgent
 from utils import moving_average, print_episode_log, safe_mkdir
+from registry import register_policy
+
+
+try:
+    import mlflow
+except ImportError:
+    mlflow = None
 
 
 # -----------------------------------------------------------------------------
@@ -111,6 +118,8 @@ def load_config(config_path):
         "policy_path"  : raw.get("output", {}).get("policy_path", "policy_v1.pkl"),
         "results_csv"  : raw.get("output", {}).get("results_csv", "results.csv"),
         "logs_dir"     : raw.get("output", {}).get("logs_dir", "logs"),
+        "mlflow_experiment": raw.get("output", {}).get("mlflow_experiment", "rl-energy-management"),
+        "config_path"   : config_path,
     }
     return cfg
 
@@ -164,6 +173,39 @@ def save_episode_log(logs_dir, run_id, episode_rewards, episode_battery,
     with open(log_path, "w") as fh:
         json.dump(payload, fh, indent=2)
     print(f"  [mlops] Episode log saved to {log_path}")
+    return log_path
+
+
+# -----------------------------------------------------------------------------
+def log_mlflow_run(cfg, run_id, metrics, artifacts):
+    """Log experiment metadata to MLflow when the package is available."""
+    if mlflow is None:
+        print("  [mlflow] Package not installed; skipping MLflow logging")
+        return
+
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "file:./mlruns")
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(cfg["mlflow_experiment"])
+
+    with mlflow.start_run(run_name=run_id):
+        mlflow.log_params(
+            {
+                "episodes": cfg["episodes"],
+                "learning_rate": cfg["lr"],
+                "gamma": cfg["gamma"],
+                "epsilon": cfg["epsilon"],
+                "epsilon_min": cfg["epsilon_min"],
+                "epsilon_decay": cfg["epsilon_decay"],
+                "seed": cfg["seed"],
+                "max_battery": cfg["max_battery"],
+                "config_path": cfg["config_path"],
+            }
+        )
+        mlflow.log_metrics(metrics)
+        for artifact in artifacts:
+            if artifact and os.path.exists(artifact):
+                mlflow.log_artifact(artifact)
+    print(f"  [mlflow] Run logged to {tracking_uri}")
 
 
 # -----------------------------------------------------------------------------
@@ -180,7 +222,7 @@ def train(cfg: dict, run_id: str):
     print(f"  Experiment : {cfg['exp_name']}  ({cfg['exp_version']})")
     print(f"  Run ID     : {run_id}")
     print(f"  Config     : episodes={cfg['episodes']}  lr={cfg['lr']}  "
-          f"γ={cfg['gamma']}  ε={cfg['epsilon']}")
+          f"gamma={cfg['gamma']}  epsilon={cfg['epsilon']}")
     print(f"{'='*55}")
 
     env = EnergyEnvironment(max_battery=cfg["max_battery"], seed=cfg["seed"])
@@ -252,11 +294,27 @@ def train(cfg: dict, run_id: str):
     append_results_csv(cfg["results_csv"], result_row)
 
     # -- MLOps: save per-episode log -------------------------------------------
-    save_episode_log(
+    log_path = save_episode_log(
         cfg["logs_dir"], run_id,
         episode_rewards, episode_battery,
         episode_drains, episode_task_scores,
     )
+
+    metrics = {
+        "avg_reward": avg_reward,
+        "avg_battery_remaining": avg_battery,
+        "avg_drain_per_step": avg_drain,
+        "avg_task_score": avg_task_score,
+    }
+    log_mlflow_run(cfg, run_id, metrics, [cfg["policy_path"], log_path, cfg["config_path"]])
+
+    metadata = register_policy(
+        cfg["policy_path"],
+        name=cfg["exp_name"],
+        metrics=metrics,
+        source_config=cfg["config_path"],
+    )
+    print(f"  [registry] Registered policy version: {metadata['version']}")
 
     return agent, episode_rewards, episode_battery
 
@@ -277,7 +335,7 @@ if __name__ == "__main__":
     # Run training
     agent, rewards, battery = train(cfg, run_id)
 
-    print(f"\n  ✓ Training complete. Run ID: {run_id}")
+    print(f"\n  Training complete. Run ID: {run_id}")
     print(f"  Policy saved to: {cfg['policy_path']}")
     print(f"  Results CSV    : {cfg['results_csv']}")
     print(f"  Episode log    : {cfg['logs_dir']}/{run_id}.json")

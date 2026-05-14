@@ -1,0 +1,39 @@
+stages:
+  prepare:
+    cmd: python data_prep.py --rows 300 --seed 42
+    deps:
+      - data_prep.py
+    outs:
+      - data/raw_tasks.csv
+      - data/clean_tasks.csv
+  tune:
+    cmd: python tuning.py --train_episodes 250 --eval_episodes 80
+    deps:
+      - agent.py
+      - environment.py
+      - tuning.py
+    outs:
+      - outputs/tuning_results.csv
+      - outputs/best_hyperparameters.json
+  train:
+    cmd: python train.py --config configs/qlearning_v2.yaml --run_id dvc_train
+    deps:
+      - agent.py
+      - environment.py
+      - train.py
+      - configs/qlearning_v2.yaml
+    outs:
+      - policy_v2.pkl
+    metrics:
+      - results.csv:
+          cache: false
+  evaluate:
+    cmd: python run_all.py --load_policy policy_v2.pkl --eval_episodes 200
+    deps:
+      - compare.py
+      - run_all.py
+      - policy_v2.pkl
+    outs:
+      - outputs/index.html
+      - outputs/comparison_table.md
+      - outputs/plots

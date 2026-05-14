@@ -58,7 +58,7 @@ def train_rl_agent(episodes=500, seed=42):
         agent.decay_epsilon()
 
         if ep % 100 == 0:
-            print(f"    ep={ep}/{episodes}  ε={agent.epsilon:.4f}")
+            print(f"    ep={ep}/{episodes}  epsilon={agent.epsilon:.4f}")
 
     agent.epsilon = 0.0   # switch to pure exploitation for evaluation
     print("  RL training done.\n")
@@ -251,7 +251,7 @@ if __name__ == "__main__":
         print(f"\n  Loading RL policy from {args.load_policy} ...")
         rl_agent = load_rl_agent(args.load_policy)
     else:
-        print("\n  No saved policy found — training RL agent from scratch ...")
+        print("\n  No saved policy found - training RL agent from scratch ...")
         rl_agent = train_rl_agent(episodes=args.train_ep, seed=args.seed)
         rl_agent.save(POLICY_PATH)
 
@@ -283,5 +283,5 @@ if __name__ == "__main__":
         output_path=os.path.join(PLOTS_DIR, "battery_vs_time.png"),
     )
 
-    print(f"  ✓ Plots saved to ./{PLOTS_DIR}/")
-    print(f"  ✓ Comparison complete.\n")
+    print(f"  Plots saved to ./{PLOTS_DIR}/")
+    print(f"  Comparison complete.\n")

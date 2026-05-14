@@ -30,3 +30,4 @@ output:
   policy_path: "policy_v2.pkl"
   results_csv: "results.csv"
   logs_dir: "logs"
+  mlflow_experiment: "rl-energy-management"

@@ -9,4 +9,6 @@ COPY . .
 
 RUN mkdir -p outputs/plots logs
 
+EXPOSE 8000
+
 CMD ["python", "run_all.py"]

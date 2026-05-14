@@ -65,8 +65,8 @@ def discretise_battery(battery_pct):
 
     Returns
     -------
-    0  if battery_pct ≤ 33   (low)
-    1  if 33 < battery_pct ≤ 66  (medium)
+    0  if battery_pct <= 33   (low)
+    1  if 33 < battery_pct <= 66  (medium)
     2  if battery_pct > 66   (high)
     """
     if battery_pct > 66:
@@ -98,9 +98,9 @@ def print_training_summary(rewards_v1, rewards_v2, window=100):
     print("\n" + "=" * 50)
     print("       TRAINING SUMMARY")
     print("=" * 50)
-    print(f"  Policy V1 — episodes: {len(rewards_v1):>5}  "
+    print(f"  Policy V1 - episodes: {len(rewards_v1):>5}  "
           f"final {w1}-ep avg reward: {avg1:>8.2f}")
-    print(f"  Policy V2 — episodes: {len(rewards_v2):>5}  "
+    print(f"  Policy V2 - episodes: {len(rewards_v2):>5}  "
           f"final {w2}-ep avg reward: {avg2:>8.2f}")
     winner = "V2" if avg2 > avg1 else "V1"
     print(f"\n  > Best policy: {winner}")
@@ -111,10 +111,10 @@ def print_episode_log(episode, total_episodes, avg_reward, epsilon, extra=""):
     """Formatted console log for one checkpoint during training."""
     bar_len   = 20
     filled    = int(bar_len * (episode / total_episodes))
-    bar       = "█" * filled + "░" * (bar_len - filled)
+    bar       = "#" * filled + "-" * (bar_len - filled)
     pct       = 100.0 * episode / total_episodes
     print(f"  [{bar}] {pct:5.1f}%  ep={episode:>5}/{total_episodes}  "
-          f"avg_r={avg_reward:>8.2f}  ε={epsilon:.4f}  {extra}")
+          f"avg_r={avg_reward:>8.2f}  epsilon={epsilon:.4f}  {extra}")
 
 
 # -- File system helpers -------------------------------------------------------

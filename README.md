@@ -1,240 +1,170 @@
-# rl_final — Smart Energy Management RL: MLOps Edition
+# Smart Energy Management RL - MLOps Edition
 
-Q-Learning agent that learns to manage battery-powered device power levels
-adaptively based on task demand. Includes full MLOps support: YAML-driven
-experiments, versioned policies, experiment tracking, and a real-world
-monitoring plan.
+This project trains a Q-learning agent to manage power levels for a battery
+powered IoT device. The agent observes battery state and task demand, then
+chooses low, medium, or high power to maximize task success while conserving
+energy.
 
----
+The repository now implements the full rubric pipeline: data preparation,
+feature engineering, multiple policies, hyperparameter tuning, seed-based
+cross-validation, MLflow tracking, reproducible scripts, Docker/FastAPI
+serving, prediction and drift monitoring, CI, DVC, and GitOps manifests.
 
-## File Structure
+## Architecture
 
-```
-rl_final/
-├── README.md                    ← This file
-├── environment.py               ← Smart Energy RL environment
-├── agent.py                     ← Tabular Q-Learning agent
-├── train.py                     ← Config-driven training + MLOps tracking
-├── utils.py                     ← Shared helpers (moving average, logging)
-├── baseline.py                  ← Fixed medium-power baseline agent
-├── compare.py                   ← Head-to-head evaluation + plots
-├── configs/
-│   ├── qlearning_v1.yaml        ← Experiment exp-qlearning-1 (baseline)
-│   └── qlearning_v2.yaml        ← Experiment exp-qlearning-2 (tuned)
-├── results.csv                  ← Experiment tracking (auto-generated)
-├── logs/
-│   ├── run_1.json               ← Per-episode log for run_1
-│   └── run_<timestamp>.json     ← Auto-generated per run
-├── plots/
-│   ├── reward_vs_episodes.png
-│   └── battery_vs_time.png
-├── policy_v1.pkl                ← Saved policy from exp-qlearning-1
-└── policy_v2.pkl                ← Saved policy from exp-qlearning-2
+```mermaid
+flowchart LR
+    raw["Simulated raw task data"] --> prep["data_prep.py<br/>clean + engineer features"]
+    prep --> tune["tuning.py<br/>grid search + seed CV"]
+    tune --> train["train.py<br/>Q-learning training"]
+    train --> mlflow["MLflow<br/>params, metrics, artifacts"]
+    train --> registry["model_registry/<version><br/>policy + metadata"]
+    train --> eval["run_all.py / compare.py<br/>baseline vs RL"]
+    eval --> report["outputs/index.html<br/>plots + comparison"]
+    registry --> api["api.py<br/>FastAPI prediction service"]
+    api --> monitor["monitoring.py<br/>prediction logs + KL drift"]
+    monitor --> retrain["K8s CronJob / DVC pipeline<br/>scheduled retraining"]
 ```
 
----
+## What Is Implemented
 
-## Versioning
+| Rubric area | Implementation |
+|---|---|
+| Data preparation | `data_prep.py` generates raw task data, removes invalid rows, clips battery percentages, and creates engineered features such as `battery_bucket`, `task_demand_id`, and `is_high_demand`. |
+| Model development | `agent.py`, `baseline.py`, and `train.py` implement fixed baseline and tabular Q-learning policies. |
+| Evaluation | `compare.py` and `run_all.py` compare baseline vs RL, generate reward/battery plots, and produce `outputs/index.html`. |
+| Hyperparameter tuning | `tuning.py` runs grid search over learning rate, gamma, and epsilon decay with seed-based cross-validation. |
+| Tracking | `train.py` writes `results.csv`, per-episode JSON logs, MLflow runs, and local registry metadata. |
+| CI/CD | `.github/workflows/ci.yml` runs tests, data prep, training smoke test, and API health check. |
+| Docker + API | `Dockerfile`, `docker-compose.yml`, and `api.py` run the pipeline and expose `/health`, `/predict`, and `/monitoring/drift`. |
+| Monitoring | `monitoring.py` logs predictions and computes KL-divergence drift against the training demand distribution. |
+| GitOps | `k8s/` contains ConfigMap, Deployment, Service, and retraining CronJob manifests. |
+| Versioning | `dvc.yaml` defines prepare, tune, train, and evaluate stages. Policies are registered under `model_registry/`. |
+| Collaboration | PR template and issue templates support branching, reviews, and issue tracking. |
 
-Each experiment is a separate Git commit tagged with its experiment name.
+## Setup
 
-| Tag | Config | Description |
-|-----|--------|-------------|
-| `exp-qlearning-1` | `configs/qlearning_v1.yaml` | Baseline: 500 eps, lr=0.1, γ=0.95, decay=0.995 |
-| `exp-qlearning-2` | `configs/qlearning_v2.yaml` | Tuned: 1000 eps, lr=0.15, γ=0.99, decay=0.998 |
-
-To check out a specific experiment:
-```bash
-git checkout exp-qlearning-1   # restore exact state of v1 run
-git checkout exp-qlearning-2   # restore exact state of v2 run
-git checkout main              # return to latest
-```
-
----
-
-## Experiment Tracking
-
-Every training run appends one row to **results.csv** and writes a full
-per-episode log to **logs/<run_id>.json**.
-
-### results.csv columns
-
-| Column | Description |
-|--------|-------------|
-| `run_id` | Unique identifier for this run (e.g. `run_1`, `run_1718480463`) |
-| `episodes` | Total training episodes |
-| `avg_reward` | Mean total reward over the last 100 episodes |
-| `avg_battery_remaining` | Mean battery % remaining at episode end (last 100 eps) |
-| `avg_drain_per_step` | Mean battery % drained per timestep — energy efficiency metric |
-| `avg_task_score` | Mean task completion score per timestep — task success rate |
-| `epsilon` | Initial exploration rate used in this run |
-| `learning_rate` | Alpha (α) used in this run |
-
-### logs/<run_id>.json structure
-
-```json
-{
-  "run_id": "run_1",
-  "experiment_tags": ["exp-qlearning-1", "exp-qlearning-2"],
-  "n_episodes": 500,
-  "episode_rewards":         [12.5, 14.2, ...],
-  "episode_battery":         [0.0, 2.1, ...],
-  "episode_drain_per_step":  [5.0, 4.8, ...],
-  "episode_task_scores":     [7.2, 8.1, ...]
-}
-```
-
-`avg_drain_per_step` is the energy-domain equivalent of "average waiting time"
-in traffic systems — it measures how efficiently the agent uses battery per
-decision step. Lower drain with equal or higher task score = better policy.
-
----
-
-## Reproducibility
-
-All random seeds are fixed in the YAML config and passed to both the
-environment and NumPy. Given the same config, every run produces the
-same Q-table, rewards, and saved policy.
-
-### Reproduce exp-qlearning-1 (baseline)
+Use Python 3.11 or newer.
 
 ```bash
-git clone <repo-url>
-cd rl_final
-python train.py --config configs/qlearning_v1.yaml --run_id run_1
+pip install -r requirements.txt
 ```
 
-Expected output (last 100-episode window):
-- avg reward ≈ 155
-- avg battery remaining ≈ 0 %
-- avg drain per step ≈ 5.0 %
-- Policy saved to: `policy_v1.pkl`
+If `python` is not on PATH in this Codex desktop environment, the bundled
+runtime used during verification was:
 
-### Reproduce exp-qlearning-2 (tuned)
+```powershell
+& "C:\Users\Shreyas B Joshi\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m pip install -r requirements.txt
+```
+
+## Run The Full Pipeline
 
 ```bash
-python train.py --config configs/qlearning_v2.yaml --run_id run_2
+python data_prep.py --rows 300 --seed 42
+python tuning.py --train_episodes 250 --eval_episodes 80
+python train.py --config configs/qlearning_v1.yaml --run_id run_v1
+python train.py --config configs/qlearning_v2.yaml --run_id run_v2
+python run_all.py --load_policy policy_v1.pkl --eval_episodes 200
 ```
 
-Expected output (last 100-episode window):
-- avg reward ≈ 160+ (more training + better exploration)
-- avg drain per step ≈ lower than v1 (slower decay lets agent learn better conservation)
-- Policy saved to: `policy_v2.pkl`
+Main outputs:
 
-### Reproduce comparison plots
+- `data/clean_tasks.csv`
+- `outputs/tuning_results.csv`
+- `outputs/best_hyperparameters.json`
+- `results.csv`
+- `logs/<run_id>.json`
+- `mlruns/`
+- `model_registry/<version>/metadata.json`
+- `outputs/index.html`
+
+## Serve The Model
+
+Start the API locally:
 
 ```bash
-python compare.py --load_policy policy_v1.pkl --episodes 200
+uvicorn api:app --host 127.0.0.1 --port 8000
 ```
 
-Anyone can clone the repo and run the same experiment — results are
-deterministic because all seeds are pinned in the YAML configs.
+Example prediction:
 
----
-
-## How to Run
-
-### Step 1 — Train the RL agent (v1)
 ```bash
-python train.py --config configs/qlearning_v1.yaml --run_id run_1
+curl -X POST http://127.0.0.1:8000/predict ^
+  -H "Content-Type: application/json" ^
+  -d "{\"battery_pct\":72,\"task_demand\":\"high\"}"
 ```
 
-### Step 2 — Train the tuned agent (v2)
+Drift endpoint:
+
 ```bash
-python train.py --config configs/qlearning_v2.yaml --run_id run_2
+curl http://127.0.0.1:8000/monitoring/drift
 ```
 
-### Step 3 — Compare RL vs baseline with plots
+## Docker Compose
+
 ```bash
-python compare.py --load_policy policy_v1.pkl --episodes 200
+docker-compose up --build
 ```
 
-### Step 4 — Run baseline only
+Services:
+
+- `pipeline`: runs the training/evaluation/report pipeline.
+- `api`: trains a boot policy if needed, then serves FastAPI on port `8000`.
+
+## DVC Workflow
+
 ```bash
-python baseline.py --episodes 200
+dvc repro
 ```
 
----
+Stages in `dvc.yaml`:
 
-## Comparison Table
+- `prepare`: generate and clean task data.
+- `tune`: run hyperparameter search.
+- `train`: train the tuned policy.
+- `evaluate`: generate report, plots, and comparison table.
 
-| Metric | Baseline | RL Policy (v1) | RL Policy (v2) |
-|--------|----------|----------------|----------------|
-| Strategy | Always medium power | Q-learning adaptive | Q-learning tuned |
-| Avg reward | ~130 | ~155 | ~160+ |
-| Avg battery remaining | ~0 % | ~0 % | ~0 % |
-| Avg drain per step | ~5 % (fixed) | adaptive | lower (better conserved) |
-| Adapts to battery state | No | Yes | Yes |
-| Adapts to task demand | No | Yes | Yes |
+## GitOps / Kubernetes
 
----
+Apply manifests from `k8s/`:
 
-## Monitoring Plan
+```bash
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/retrain-cronjob.yaml
+```
 
-*Design only — describes what would be monitored if this policy were deployed
-on a real battery-powered device or IoT edge node.*
+The deployment exposes the API, while the CronJob runs weekly retraining.
 
-If deployed in a real-world smart energy management system, we would monitor
-the following signals continuously:
+## Tests
 
-**Energy efficiency metrics:**
-We would track `avg_drain_per_step` in real time — the average battery
-percentage consumed per decision cycle. A sudden increase signals the policy
-is over-powering tasks unnecessarily, wasting energy. A sustained decrease
-combined with rising task-failure rates would indicate under-powering.
+```bash
+pytest -q
+```
 
-**Task completion quality:**
-`avg_task_score` per hour would be monitored against a minimum SLA threshold.
-If the score drops below the baseline's average (≈7.5 per step), it indicates
-the policy is making poor power-level choices for the incoming task mix.
+The tests cover agent policy shape, data preparation, drift detection, and API
+health.
 
-**Battery depletion events:**
-We would count how many episodes (device cycles) end with battery at 0 %
-before the scheduled task queue is complete — equivalent to a "device timeout."
-A rising depletion rate indicates the policy is not conserving charge for
-high-demand bursts.
+## Branching And Collaboration
 
-**Distribution shift detection:**
-Real-world task demand distributions differ from the uniform distribution
-used in training. We would compare the live task-demand histogram against the
-training distribution weekly. If the Kullback-Leibler divergence exceeds a
-threshold (e.g., KL > 0.2), an automated re-training pipeline would be
-triggered with the new task distribution.
+Recommended workflow:
 
-**Policy drift alert:**
-If any of the above metrics degrade by more than 15 % relative to the
-30-day rolling baseline, an alert would be fired to trigger a policy review
-or rollback to the last known-good `policy_v1.pkl` checkpoint.
+- `main`: stable submission branch.
+- `dev`: integration branch.
+- `feature/<short-name>`: feature work such as `feature/api-monitoring`.
 
----
+Use pull requests into `dev`, require at least one review, and attach generated
+metrics or screenshots from `outputs/index.html` when model behavior changes.
+Issue templates and the PR template are under `.github/`.
 
-## Analysis
+## Demo Script
 
-### When RL Performs Better
-- **Mixed workloads** — adapts power level to demand instead of always
-  using medium power. On low-demand tasks the RL agent saves battery by
-  choosing low power; on high-demand tasks it uses high power when battery
-  permits.
-- **Low-battery situations** — the RL agent conserves charge and avoids
-  draining the last percentage points on low-value tasks.
-
-### Failure Cases
-- **Workload spikes** — a sustained burst of high-demand tasks can deplete
-  battery faster than the policy anticipates.
-- **Rare states** — (low battery, high demand) may be under-explored if
-  training episodes are short.
-- **Distribution shift** — if real-world task probabilities differ from
-  training, the policy degrades without online re-training.
-
----
-
-## SDG Alignment
-
-### SDG 7 — Affordable and Clean Energy
-The RL agent reduces unnecessary energy consumption by matching power output
-to actual task demand, extending battery life and reducing electricity footprint.
-
-### SDG 11 — Sustainable Cities and Communities
-Smart power management at the device level reduces the resource footprint of
-IoT and edge computing deployments, enabling denser and more sustainable
-smart-city infrastructure.
+1. Show `data_prep.py` and `data/clean_tasks.csv` for cleaning and feature engineering.
+2. Run `pytest -q` to show automated checks.
+3. Run `python train.py --config configs/qlearning_v1.yaml --run_id demo`.
+4. Show the new row in `results.csv`, `logs/demo.json`, `mlruns/`, and `model_registry/`.
+5. Run `python run_all.py --load_policy policy_v1.pkl --eval_episodes 200`.
+6. Open `outputs/index.html` and explain the reward and battery plots.
+7. Start `uvicorn api:app --host 127.0.0.1 --port 8000`, call `/predict`, then call `/monitoring/drift`.
+8. Show `.github/workflows/ci.yml`, `dvc.yaml`, and `k8s/` for automation and scalability.
