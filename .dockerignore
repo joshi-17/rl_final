@@ -10,3 +10,6 @@ outputs/
 plots/
 results.csv
 *.md
+.pytest_cache/
+.pytest_cache2/
+.pytest_temp/

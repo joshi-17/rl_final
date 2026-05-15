@@ -1,6 +1,0 @@
-[
-  "tests/test_pipeline.py::test_agent_policy_shape",
-  "tests/test_pipeline.py::test_api_health",
-  "tests/test_pipeline.py::test_data_cleaning_outputs_engineered_features",
-  "tests/test_pipeline.py::test_drift_detector_flags_shift"
-]
